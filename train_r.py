@@ -296,7 +296,7 @@ if __name__ == '__main__':
 
         switch_to_rl = False
         exit_train = False
-        if patience > 0:
+        if patience > 5:
             if not use_rl:
                 use_rl = True
                 switch_to_rl = True
