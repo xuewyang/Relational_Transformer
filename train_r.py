@@ -66,6 +66,8 @@ def evaluate_metrics(model, dataloader, text_field):
                 gen['%d_%d' % (it, i)] = [gen_i, ]
                 gts['%d_%d' % (it, i)] = gts_i
             pbar.update()
+            if it > 100:
+                break
 
     gts = evaluation.PTBTokenizer.tokenize(gts)
     gen = evaluation.PTBTokenizer.tokenize(gen)
@@ -140,6 +142,8 @@ def train_scst(model, dataloader, optim, cider, text_field):
             pbar.set_postfix(loss=running_loss / (it + 1), reward=running_reward / (it + 1),
                              reward_baseline=running_reward_baseline / (it + 1))
             pbar.update()
+            if it > 100:
+                break
 
     loss = running_loss / len(dataloader)
     reward = running_reward / len(dataloader)
@@ -296,7 +300,7 @@ if __name__ == '__main__':
 
         switch_to_rl = False
         exit_train = False
-        if patience == 5:
+        if patience >= 0:
             if not use_rl:
                 use_rl = True
                 switch_to_rl = True
