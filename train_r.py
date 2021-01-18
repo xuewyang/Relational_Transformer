@@ -1,5 +1,5 @@
 import random
-from data import ImageDetectionsField, TextField, RawField, BBoxField, RelPairField, RelLabelField
+from data import ImageDetectionsField, TextField, RawField
 from data import COCOR, DataLoader
 import evaluation
 from evaluation import PTBTokenizer, Cider
@@ -30,7 +30,7 @@ def evaluate_loss(model, dataloader, loss_fn, text_field):
     running_loss = .0
     with tqdm(desc='Epoch %d - validation' % e, unit='it', total=len(dataloader)) as pbar:
         with torch.no_grad():
-            for it, (detections, captions, bboxes, rel_pairs, rel_labels) in enumerate(dataloader):
+            for it, (detections, bboxes, rel_pairs, rel_labels, captions) in enumerate(dataloader):
                 detections, captions, bboxes, rel_pairs, rel_labels = detections.to(device), captions.to(device), bboxes.to(device), rel_pairs.to(device), rel_labels.to(device)
                 out, relation_logits, rel_labels_ = model(detections, captions, bboxes, rel_pairs, rel_labels)
                 captions = captions[:, 1:].contiguous()
@@ -43,6 +43,8 @@ def evaluate_loss(model, dataloader, loss_fn, text_field):
 
                 pbar.set_postfix(loss=running_loss / (it + 1))
                 pbar.update()
+                if it > 1000:
+                    break
 
     val_loss = running_loss / len(dataloader)
     return val_loss
@@ -53,7 +55,7 @@ def evaluate_metrics(model, dataloader, text_field):
     model.eval()
     gen = {}
     gts = {}
-    # , bboxes, rel_pairs, rel_labels
+    # bboxes, rel_pairs, rel_labels
     with tqdm(desc='Epoch %d - evaluation' % e, unit='it', total=len(dataloader)) as pbar:
         for it, (images, caps_gt) in enumerate(dataloader):
             detections, bboxes, rel_pairs, rel_labels = images
@@ -66,6 +68,8 @@ def evaluate_metrics(model, dataloader, text_field):
                 gen['%d_%d' % (it, i)] = [gen_i, ]
                 gts['%d_%d' % (it, i)] = gts_i
             pbar.update()
+            if it > 1000:
+                break
 
     gts = evaluation.PTBTokenizer.tokenize(gts)
     gen = evaluation.PTBTokenizer.tokenize(gen)
@@ -80,7 +84,8 @@ def train_xe(model, dataloader, optim, text_field):
     # scheduler.step()
     running_loss = .0
     with tqdm(desc='Epoch %d - train' % e, unit='it', total=len(dataloader)) as pbar:
-        for it, (detections, captions, bboxes, rel_pairs, rel_labels) in enumerate(dataloader):
+        # for it, (detections, captions, bboxes, rel_pairs, rel_labels) in enumerate(dataloader):
+        for it, (detections, bboxes, rel_pairs, rel_labels, captions) in enumerate(dataloader):
             detections, captions, bboxes, rel_pairs, rel_labels = detections.to(device), captions.to(device), bboxes.to(device), rel_pairs.to(device), rel_labels.to(device)
             out, relation_logits, rel_labels_ = model(detections, captions, bboxes, rel_pairs, rel_labels)
             optim.zero_grad()
@@ -98,6 +103,8 @@ def train_xe(model, dataloader, optim, text_field):
             pbar.set_postfix(loss=running_loss / (it + 1))
             pbar.update()
             scheduler.step()
+            if it > 1000:
+                break
 
     loss = running_loss / len(dataloader)
     return loss
@@ -140,6 +147,8 @@ def train_scst(model, dataloader, optim, cider, text_field):
             pbar.set_postfix(loss=running_loss / (it + 1), reward=running_reward / (it + 1),
                              reward_baseline=running_reward_baseline / (it + 1))
             pbar.update()
+            if it > 1000:
+                break
 
     loss = running_loss / len(dataloader)
     reward = running_reward / len(dataloader)
@@ -171,16 +180,13 @@ if __name__ == '__main__':
 
     # Pipeline for image regions
     image_field = ImageDetectionsField(detections_path=args.features_path, max_detections=100, load_in_tmp=False)
-    bbox_field = BBoxField(detections_path=args.features_path, max_detections=100, load_in_tmp=False)
-    relpair_field = RelPairField(detections_path=args.features_path, max_detections=100, load_in_tmp=False)
-    rellabel_field = RelLabelField(detections_path=args.features_path, max_detections=100, load_in_tmp=False)
 
     # Pipeline for text
     text_field = TextField(init_token='<bos>', eos_token='<eos>', lower=True, tokenize='spacy',
                            remove_punctuation=True, nopoints=False)
 
     # Create the dataset
-    dataset = COCOR(image_field, text_field, bbox_field, relpair_field, rellabel_field, 'coco/images/', args.annotation_folder, args.annotation_folder)
+    dataset = COCOR(image_field, text_field, 'coco/images/', args.annotation_folder, args.annotation_folder)
     train_dataset, val_dataset, test_dataset = dataset.splits
 
     if not os.path.isfile('vocab.pkl'):
@@ -196,11 +202,11 @@ if __name__ == '__main__':
     decoder = MeshedDecoder(len(text_field.vocab), 54, 3, text_field.vocab.stoi['<pad>'])
     model = TransformerR(text_field.vocab.stoi['<bos>'], encoder, decoder).to(device)
 
-    dict_dataset_train = train_dataset.image_dictionary({'image': image_field, 'text': RawField(), 'bbox': bbox_field, 'rel_pair': relpair_field, 'rel_label': rellabel_field})
+    dict_dataset_train = train_dataset.image_dictionary({'image': image_field, 'text': RawField()})
     ref_caps_train = list(train_dataset.text)
     cider_train = Cider(PTBTokenizer.tokenize(ref_caps_train))
-    dict_dataset_val = val_dataset.image_dictionary({'image': image_field, 'text': RawField(), 'bbox': bbox_field, 'rel_pair': relpair_field, 'rel_label': rellabel_field})
-    dict_dataset_test = test_dataset.image_dictionary({'image': image_field, 'text': RawField(), 'bbox': bbox_field, 'rel_pair': relpair_field, 'rel_label': rellabel_field})
+    dict_dataset_val = val_dataset.image_dictionary({'image': image_field, 'text': RawField()})
+    dict_dataset_test = test_dataset.image_dictionary({'image': image_field, 'text': RawField()})
 
 
     def lambda_lr(s):
@@ -296,7 +302,7 @@ if __name__ == '__main__':
 
         switch_to_rl = False
         exit_train = False
-        if patience > 5:
+        if patience >= 0:
             if not use_rl:
                 use_rl = True
                 switch_to_rl = True

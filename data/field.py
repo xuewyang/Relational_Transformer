@@ -108,19 +108,35 @@ class ImageDetectionsField(RawField):
         image_id = int(x.split('_')[-1].split('.')[0])
         try:
             precomp_data = self.f['%d_features' % image_id][()]
+            bbox_data = np.array(self.f['%d_boxes' % image_id][()])
+            rel_pairs = np.array(self.f['%d_rel_pairs' % image_id][()])
+            rel_labels = np.array(self.f['%d_rel_labels' % image_id][()]).reshape([-1, 1])
             if self.sort_by_prob:
                 precomp_data = precomp_data[np.argsort(np.max(self.f['%d_cls_prob' % image_id][()], -1))[::-1]]
+                bbox_data = bbox_data[np.argsort(np.max(self.f['%d_boxes' % image_id][()], -1))[::-1]]
+                rel_pairs = rel_pairs[np.argsort(np.max(self.f['%d_rel_pairs' % image_id][()], -1))[::-1]]
+                rel_labels = rel_labels[np.argsort(np.max(self.f['%d_rel_labels' % image_id][()], -1))[::-1]]
         except KeyError:
             warnings.warn('Could not find detections for %d' % image_id)
             precomp_data = np.random.rand(10, 2048)
+            bbox_data = np.random.randint(0, 200, (10, 4))
+            rel_pairs = np.random.randint(0, 20, (10, 2))
+            rel_labels = np.random.randint(0, 20, (10, 1))
 
         delta = self.max_detections - precomp_data.shape[0]
+        delta2 = self.max_detections * (self.max_detections - 1) - rel_pairs.shape[0]
+        delta3 = self.max_detections * (self.max_detections - 1) - rel_labels.shape[0]
         if delta > 0:
             precomp_data = np.concatenate([precomp_data, np.zeros((delta, precomp_data.shape[1]))], axis=0)
+            bbox_data = np.concatenate([bbox_data, -np.ones((delta, bbox_data.shape[1]))], axis=0)
+            rel_pairs = np.concatenate([rel_pairs, -np.ones((delta2, rel_pairs.shape[1]))], axis=0)
+            rel_labels = np.concatenate([rel_labels, -np.ones((delta3, rel_labels.shape[1]))], axis=0)
         elif delta < 0:
             precomp_data = precomp_data[:self.max_detections]
-
-        return precomp_data.astype(np.float32)
+            bbox_data = bbox_data[:self.max_detections]
+            rel_pairs = rel_pairs[:self.max_detections * (self.max_detections - 1)]
+            rel_labels = rel_labels[:self.max_detections * (self.max_detections - 1)]
+        return (precomp_data.astype(np.float32), bbox_data.astype(np.int), rel_pairs.astype(np.int), rel_labels.astype(np.int))
 
 
 class BBoxField(RawField):
