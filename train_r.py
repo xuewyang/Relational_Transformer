@@ -43,8 +43,6 @@ def evaluate_loss(model, dataloader, loss_fn, text_field):
 
                 pbar.set_postfix(loss=running_loss / (it + 1))
                 pbar.update()
-                if it > 1000:
-                    break
 
     val_loss = running_loss / len(dataloader)
     return val_loss
@@ -68,8 +66,6 @@ def evaluate_metrics(model, dataloader, text_field):
                 gen['%d_%d' % (it, i)] = [gen_i, ]
                 gts['%d_%d' % (it, i)] = gts_i
             pbar.update()
-            if it > 1000:
-                break
 
     gts = evaluation.PTBTokenizer.tokenize(gts)
     gen = evaluation.PTBTokenizer.tokenize(gen)
@@ -103,8 +99,6 @@ def train_xe(model, dataloader, optim, text_field):
             pbar.set_postfix(loss=running_loss / (it + 1))
             pbar.update()
             scheduler.step()
-            if it > 1000:
-                break
 
     loss = running_loss / len(dataloader)
     return loss
@@ -147,8 +141,6 @@ def train_scst(model, dataloader, optim, cider, text_field):
             pbar.set_postfix(loss=running_loss / (it + 1), reward=running_reward / (it + 1),
                              reward_baseline=running_reward_baseline / (it + 1))
             pbar.update()
-            if it > 1000:
-                break
 
     loss = running_loss / len(dataloader)
     reward = running_reward / len(dataloader)
@@ -213,7 +205,6 @@ if __name__ == '__main__':
         warm_up = args.warmup
         s += 1
         return (model.d_model ** -.5) * min(s ** -.5, s * warm_up ** -1.5)
-
 
     # Initial conditions
     optim = Adam(model.parameters(), lr=1, betas=(0.9, 0.98))
@@ -302,7 +293,7 @@ if __name__ == '__main__':
 
         switch_to_rl = False
         exit_train = False
-        if patience >= 0:
+        if patience >= 5:
             if not use_rl:
                 use_rl = True
                 switch_to_rl = True

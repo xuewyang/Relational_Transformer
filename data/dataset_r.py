@@ -144,15 +144,9 @@ class PairedDataset(Dataset):
     def __init__(self, examples, fields):
         assert ('image' in fields)
         assert ('text' in fields)
-        # assert ('bbox' in fields)
-        # assert ('rel_pair' in fields)
-        # assert ('rel_label' in fields)
         super(PairedDataset, self).__init__(examples, fields)
         self.image_field = self.fields['image']
         self.text_field = self.fields['text']
-        # self.bbox_field = self.fields['bbox']
-        # self.rel_pair_field = self.fields['rel_pair']
-        # self.rel_label_field = self.fields['rel_label']
 
     def image_set(self):
         img_list = [e.image for e in self.examples]
@@ -168,27 +162,6 @@ class PairedDataset(Dataset):
         dataset = Dataset(examples, {'text': self.text_field})
         return dataset
 
-    # def bbox_set(self):
-    #     bbox_list = [e.bbox for e in self.examples]
-    #     bbox_list = unique(bbox_list)
-    #     examples = [Example.fromdict({'bbox': b}) for b in bbox_list]
-    #     dataset = Dataset(examples, {'bbox': self.bbox_field})
-    #     return dataset
-    #
-    # def rel_pair_set(self):
-    #     rel_pair_list = [e.rel_pair for e in self.examples]
-    #     rel_pair_set = unique(rel_pair_list)
-    #     examples = [Example.fromdict({'rel_pair': rp}) for rp in rel_pair_set]
-    #     dataset = Dataset(examples, {'rel_pair': self.rel_pair_field})
-    #     return dataset
-    #
-    # def rel_label_set(self):
-    #     rel_label_list = [e.rel_label for e in self.examples]
-    #     rel_label_set = unique(rel_label_list)
-    #     examples = [Example.fromdict({'rel_label': rl}) for rl in rel_label_set]
-    #     dataset = Dataset(examples, {'rel_label': self.rel_label_field})
-    #     return dataset
-
     def image_dictionary(self, fields=None):
         if not fields:
             fields = self.fields
@@ -200,24 +173,6 @@ class PairedDataset(Dataset):
             fields = self.fields
         dataset = DictionaryDataset(self.examples, fields, key_fields='text')
         return dataset
-    #
-    # def bbox_dictionary(self, fields=None):
-    #     if not fields:
-    #         fields = self.fields
-    #     dataset = DictionaryDataset(self.examples, fields, key_fields='bbox')
-    #     return dataset
-    #
-    # def rel_pair_dictionary(self, fields=None):
-    #     if not fields:
-    #         fields = self.fields
-    #     dataset = DictionaryDataset(self.examples, fields, key_fields='rel_pair')
-    #     return dataset
-    #
-    # def rel_label_dictionary(self, fields=None):
-    #     if not fields:
-    #         fields = self.fields
-    #     dataset = DictionaryDataset(self.examples, fields, key_fields='rel_label')
-    #     return dataset
 
     @property
     def splits(self):
