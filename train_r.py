@@ -66,8 +66,6 @@ def evaluate_metrics(model, dataloader, text_field):
                 gen['%d_%d' % (it, i)] = [gen_i, ]
                 gts['%d_%d' % (it, i)] = gts_i
             pbar.update()
-            if it > 100:
-                break
 
     gts = evaluation.PTBTokenizer.tokenize(gts)
     gen = evaluation.PTBTokenizer.tokenize(gen)
@@ -142,8 +140,6 @@ def train_scst(model, dataloader, optim, cider, text_field):
             pbar.set_postfix(loss=running_loss / (it + 1), reward=running_reward / (it + 1),
                              reward_baseline=running_reward_baseline / (it + 1))
             pbar.update()
-            if it > 100:
-                break
 
     loss = running_loss / len(dataloader)
     reward = running_reward / len(dataloader)
@@ -153,7 +149,7 @@ def train_scst(model, dataloader, optim, cider, text_field):
 
 if __name__ == '__main__':
     device = torch.device('cuda')
-    parser = argparse.ArgumentParser(description='Meshed-Memory Transformer')
+    parser = argparse.ArgumentParser(description='Relational Transformer')
     parser.add_argument('--exp_name', type=str, default='m2_transformer')
     parser.add_argument('--batch_size', type=int, default=10)
     parser.add_argument('--workers', type=int, default=0)
@@ -169,7 +165,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     print(args)
 
-    print('Meshed-Memory Transformer Training')
+    print('Relational Transformer Training')
 
     writer = SummaryWriter(log_dir=os.path.join(args.logs_folder, args.exp_name))
 
@@ -187,12 +183,12 @@ if __name__ == '__main__':
     dataset = COCOR(image_field, text_field, bbox_field, relpair_field, rellabel_field, 'coco/images/', args.annotation_folder, args.annotation_folder)
     train_dataset, val_dataset, test_dataset = dataset.splits
 
-    if not os.path.isfile('vocab_%s.pkl' % args.exp_name):
+    if not os.path.isfile('vocab.pkl'):
         print("Building vocabulary")
         text_field.build_vocab(train_dataset, val_dataset, min_freq=5)
-        pickle.dump(text_field.vocab, open('vocab_%s.pkl' % args.exp_name, 'wb'))
+        pickle.dump(text_field.vocab, open('vocab.pkl', 'wb'))
     else:
-        text_field.vocab = pickle.load(open('vocab_%s.pkl' % args.exp_name, 'rb'))
+        text_field.vocab = pickle.load(open('vocab.pkl', 'rb'))
 
     # Model and dataloaders
     encoder = MemoryAugmentedEncoderR(3, 0, attention_module=ScaledDotProductAttentionMemory,
@@ -300,7 +296,7 @@ if __name__ == '__main__':
 
         switch_to_rl = False
         exit_train = False
-        if patience >= 0:
+        if patience > 0:
             if not use_rl:
                 use_rl = True
                 switch_to_rl = True
