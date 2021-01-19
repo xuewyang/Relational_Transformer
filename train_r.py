@@ -156,6 +156,7 @@ if __name__ == '__main__':
     parser.add_argument('--workers', type=int, default=0)
     parser.add_argument('--m', type=int, default=40)
     parser.add_argument('--head', type=int, default=8)
+    parser.add_argument('--n_layers', type=int, default=3)
     parser.add_argument('--warmup', type=int, default=10000)
     parser.add_argument('--resume_last', action='store_true')
     parser.add_argument('--resume_best', action='store_true')
@@ -189,9 +190,9 @@ if __name__ == '__main__':
         text_field.vocab = pickle.load(open('vocab.pkl', 'rb'))
 
     # Model and dataloaders
-    encoder = MemoryAugmentedEncoderR(3, 0, attention_module=ScaledDotProductAttentionMemory,
+    encoder = MemoryAugmentedEncoderR(args.n_layers, 0, attention_module=ScaledDotProductAttentionMemory,
                                       attention_module_kwargs={'m': args.m})
-    decoder = MeshedDecoder(len(text_field.vocab), 54, 3, text_field.vocab.stoi['<pad>'])
+    decoder = MeshedDecoder(len(text_field.vocab), 54, args.n_layers, text_field.vocab.stoi['<pad>'])
     model = TransformerR(text_field.vocab.stoi['<bos>'], encoder, decoder).to(device)
 
     dict_dataset_train = train_dataset.image_dictionary({'image': image_field, 'text': RawField()})
