@@ -25,7 +25,7 @@ def predict_captions(model, dataloader, text_field):
             detections, bboxes, rel_pairs, rel_labels = detections.to(device), bboxes.to(device), rel_pairs.to(
                 device), rel_labels.to(device)
             with torch.no_grad():
-                out, _ = model.beam_search(detections, 20, text_field.vocab.stoi['<eos>'], 5, out_size=1)
+                out, _ = model.beam_search_r(detections, 20, text_field.vocab.stoi['<eos>'], 5, out_size=1)
             caps_gen = text_field.decode(out, join_words=False)
             for i, (gts_i, gen_i) in enumerate(zip(caps_gt, caps_gen)):
                 gen_i = ' '.join([k for k, g in itertools.groupby(gen_i)])
